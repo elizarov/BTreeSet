@@ -1,7 +1,23 @@
-expect class SortedSet<E>(comparator: Comparator<in E>) : SortedSetInterface<E> {
-    override fun add(element: E): Boolean
-    override fun remove(element: E): Boolean
-    override fun first(): E
-    override fun contains(element: E): Boolean
-    override fun isEmpty(): Boolean
+// This interface is declared only for the purpose of testing on JVM,
+// so that both java.util.TreeSet and BTreeSet implementations can be tested against the same testsuite.
+interface SortedSet<E> {
+    fun add(element: E): Boolean
+    fun remove(element: E): Boolean
+    fun first(): E
+    fun contains(element: E): Boolean
+    fun isEmpty(): Boolean
+}
+
+interface SortedSetFactory {
+    fun <E> createSortedSet(comparator: Comparator<in E>): SortedSet<E>
+}
+
+object SortedSetImplFactory : SortedSetFactory {
+    override fun <E> createSortedSet(comparator: Comparator<in E>): SortedSet<E> =
+        SortedSetImpl(comparator)
+}
+
+object BTreeSetFactory : SortedSetFactory {
+    override fun <E> createSortedSet(comparator: Comparator<in E>): SortedSet<E> =
+        BTreeSet(comparator)
 }

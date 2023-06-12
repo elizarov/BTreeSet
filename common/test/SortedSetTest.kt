@@ -1,13 +1,13 @@
 import kotlin.random.*
 import kotlin.test.*
 
-class SortedSetTest : SortedSetTestBase(DefaultSortedSetFactory)
+class SortedSetTest : SortedSetTestBase(SortedSetImplFactory)
 
 abstract class SortedSetTestBase(private val factory: SortedSetFactory) {
-    private fun <E: Comparable<*>> sortedSetOf(vararg elements: E): SortedSetInterface<E> =
+    private fun <E: Comparable<*>> sortedSetOf(vararg elements: E): SortedSet<E> =
         sortedSetOf(compareBy { it }, *elements)
 
-    private fun <E> sortedSetOf(comparator: Comparator<in E>, vararg elements: E): SortedSetInterface<E> {
+    private fun <E> sortedSetOf(comparator: Comparator<in E>, vararg elements: E): SortedSet<E> {
         val set = factory.createSortedSet(comparator)
         for (element in elements) {
             set.add(element)
@@ -16,7 +16,7 @@ abstract class SortedSetTestBase(private val factory: SortedSetFactory) {
         return set
     }
 
-    private fun <E> assertOrderEquals(expect: Iterable<E>, actual: SortedSetInterface<E>) {
+    private fun <E> assertOrderEquals(expect: Iterable<E>, actual: SortedSet<E>) {
         for (e in expect) {
             assertEquals(e, actual.first())
             assertTrue(actual.contains(e))
@@ -51,7 +51,7 @@ abstract class SortedSetTestBase(private val factory: SortedSetFactory) {
         }
     }
 
-    private fun <E> assertContains(set: SortedSetInterface<E>, element: E, message: String) {
+    private fun <E> assertContains(set: SortedSet<E>, element: E, message: String) {
         val contains = try {
             set.contains(element)
         } catch (e: Exception) {

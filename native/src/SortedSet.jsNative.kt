@@ -1,1 +1,1 @@
-actual typealias SortedSet<E> = BTreeSet<E>
+actual typealias SortedSetImpl<E> = BTreeSet<E>

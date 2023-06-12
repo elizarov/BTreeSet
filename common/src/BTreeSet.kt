@@ -20,7 +20,7 @@ fun minGrow(size: Int) = (size * 3 / 2).coerceAtLeast(4)
 @Suppress("UNCHECKED_CAST")
 class BTreeSet<E>(
     private val comparator: Comparator<in E>
-) : SortedSetInterface<E> {
+) : SortedSet<E> {
     // total number of elements
     private var size = 0
     // total number of allocated pages
