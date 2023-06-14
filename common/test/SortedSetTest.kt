@@ -68,25 +68,39 @@ abstract class SortedSetTestBase(private val factory: SortedSetFactory) {
 
     @Test
     fun testAddRemove() {
-        for (n in listOf(3, 5, 10, 100)) {
-            checkAddRemove((1..n).toList()) // insert in order
-            checkAddRemove((n downTo 1).toList()) // insert backwards
-            checkAddRemove((1..n).shuffled(Random(1))) // insert randomly
+        val rnd = Random(1)
+        for (n in listOf(1, 2, 3, 4, 5, 6, 7, 10, 20, 50, 100)) {
+            checkAddRemove(rnd, (1..n).toList()) // insert in order
+            checkAddRemove(rnd, (n downTo 1).toList()) // insert backwards
+            checkAddRemove(rnd, (1..n).shuffled(rnd)) // insert randomly
         }
     }
 
-    private fun <E : Comparable<E>> checkAddRemove(elements: List<E>) {
+    private fun <E : Comparable<E>> checkAddRemove(rnd: Random, elements: List<E>) {
         val min = elements.min()
         val set = factory.createSortedSet<E>(compareBy { it })
-        for (iteration in 0..5) {
-            for (x in elements) set.add(x)
-            for (x in elements) assertContains(set, x, "set contains $x")
+        for (iteration in 0..7) {
+            for (x in elements) {
+                assertTrue(set.add(x)) // insert all elements in order
+            }
+            for (x in elements) {
+                assertContains(set, x, "set contains $x") // check that they are all there
+            }
             assertEquals(min, set.first())
             assertFalse(set.isEmpty())
-            when (iteration % 2) {
-                0 -> for (x in elements) set.remove(x) // remove in original order
-                1 -> for (x in elements.reversed()) set.remove(x) // remove in reverse
-                2 -> for (x in elements) set.remove(set.first()) // remove first
+            when (iteration % 4) {
+                0 -> for (x in elements) {
+                    assertTrue(set.remove(x)) // remove in original order
+                }
+                1 -> for (x in elements.reversed()) {
+                    assertTrue(set.remove(x)) // remove in reversed order
+                }
+                2 -> for (x in elements) {
+                    assertTrue(set.remove(set.first())) // remove first element
+                }
+                3 -> for (x in elements.shuffled(rnd)) {
+                    assertTrue(set.remove(x)) // remove in random order
+                }
             }
             for (x in elements) assertFalse(set.contains(x))
             assertTrue(set.isEmpty())
