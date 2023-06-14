@@ -1,1 +1,4 @@
-class BTreeSetTest : SortedSetTestBase(BTreeSetFactory)
+class BTreeSetTest : SortedSetTest() {
+    override val factory: SortedSetFactory
+        get() = BTreeSetFactory
+}

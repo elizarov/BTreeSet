@@ -1,9 +1,10 @@
 import kotlin.random.*
 import kotlin.test.*
 
-class SortedSetTest : SortedSetTestBase(SortedSetImplFactory)
-
-abstract class SortedSetTestBase(private val factory: SortedSetFactory) {
+open class SortedSetTest {
+    protected open val factory: SortedSetFactory
+        get() = SortedSetImplFactory
+    
     private fun <E: Comparable<*>> sortedSetOf(vararg elements: E): SortedSet<E> =
         sortedSetOf(compareBy { it }, *elements)
 
