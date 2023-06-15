@@ -161,9 +161,8 @@ class BTreeSet<E>(
     }
 
     override fun remove(element: E): Boolean {
-        val res= removeImpl(rootPage, element)
-        if (res < 0) return false
-        if (res == 0 && !isLeafPage(rootPage)) removeDegenerateRootPage()
+        if (!removeImpl(rootPage, element)) return false
+        if (flags[rootPage] == 0) removeDegenerateRootPage()
         size--
         return true
     }
@@ -175,35 +174,32 @@ class BTreeSet<E>(
         rootPage = np
     }
     
-    // Tries to remove an element from a page.
-    // * result == -1 -- if the element was NOT found, nothing was done
-    // * result >= 0 -- if the element was removed, the value is the resulting number of keys in the page
-    private fun removeImpl(page: Int, element: E): Int {
+    // Tries to remove an element from a page. Returns true if removal was successful.
+    // Caller must check if the page needs to be rebalanced after remove.
+    private fun removeImpl(page: Int, element: E): Boolean {
         val i = findIndex(page, element)
         if (i < 0) {
-            if (isLeafPage(page)) return -1 // leaf page -- element was not found
+            if (isLeafPage(page)) return false // leaf page -- element was not found
             // recursively remove from the child page
             val j = -i - 1
             val lp = getLink(page, j)
-            val res = removeImpl(lp, element)
-            if (res < 0) return -1
-            if (res >= MIN_N) return nKeys(page)
-            // the resulting page is too small - rebalance
-            return rebalancePageChildren(page, findRebalanceIndex(page, j))
+            if (!removeImpl(lp, element)) return false
+            if (nKeys(lp) < MIN_N) rebalancePageChildren(page, findRebalanceIndex(page, j))
+            return true 
         }
         // element was found at index i
         if (isLeafPage(page)) {
             // remove element from leaf page
             val n = nKeys(page)
             removeKey(page, i, n)
-            return (n - 1).also { flags[page] = it or LEAF_FLAG }
+            flags[page] = (n - 1) or LEAF_FLAG
+            return true
         }
         // remove element from non-leaf page by moving the last element from the left child into its place
         val lp = getLink(page, i)
         setKey(page, i, removeLastImpl(lp))
-        if (nKeys(lp) >= MIN_N) return nKeys(page) // everything is Ok w.r.t to size
-        // the new page on the left is too small -- rebalance it
-        return rebalancePageChildren(page, findRebalanceIndex(page, i))
+        if (nKeys(lp) < MIN_N) rebalancePageChildren(page, findRebalanceIndex(page, i))
+        return true
     }
 
     // Removes the last element from the specified page, does not rebalance this page.
@@ -218,15 +214,13 @@ class BTreeSet<E>(
         return result
     }
 
-    // Finds the index at which to call rebalancePageChildren when the child at in j has become underful
+    // Finds the index at which to call rebalancePageChildren when the child at in j has become underfull.
     private fun findRebalanceIndex(page: Int, j: Int): Int =
         if (j == 0 || j < nKeys(page) - 1 && nKeys(getLink(page, j + 1)) > nKeys(getLink(page, j - 1)))
             j else j - 1
 
     // Rebalances children of page at positions k and k + 1 (one of them must have less than MIN_N keys)
-    // Returns the resulting number of keys on page.
-    private fun rebalancePageChildren(page: Int, k: Int): Int {
-        val n = nKeys(page)
+    private fun rebalancePageChildren(page: Int, k: Int) {
         val lp = getLink(page, k)
         val rp = getLink(page, k + 1)
         val ln = nKeys(lp)
@@ -237,6 +231,7 @@ class BTreeSet<E>(
         val ns = ln + rn
         if (ns + 1 <= MAX_N) {
             // merge both children
+            val n = nKeys(page)
             copyKey(lp, ln, page, k)
             moveKeys(lp, ln + 1, rp, 0, rn)
             if (!leafChildren) moveLinks(lp, ln + 1, rp, 0, rn + 1)
@@ -244,7 +239,8 @@ class BTreeSet<E>(
             freePage(rp)
             removeKey(page, k, n)
             removeLink(page, k + 1, n + 1)
-            return (n - 1).also { flags[page] = it }
+            flags[page] = n - 1
+            return
         }
         // redistribute evenly
         val ln1 = ns / 2
@@ -278,7 +274,7 @@ class BTreeSet<E>(
         }
         flags[lp] = flag(ln1, leafChildren)
         flags[rp] = flag(rn1, leafChildren)
-        return n
+        return
     }
 
     // Returns index of an element in a page.
