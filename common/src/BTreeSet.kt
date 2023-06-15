@@ -29,6 +29,8 @@ class BTreeSet<E>(
     private var pages = 1
     // the index of the first free page among allocated, flags link to the next free page
     private var freePage = -1
+    // the index of the root page
+    private var rootPage = 0
     // 1 element for each page, initially allocated only for root page
     private var flags: IntArray = intArrayOf(LEAF_FLAG)
     // MAX_N elements for each page, initially allocated only for root
@@ -40,13 +42,13 @@ class BTreeSet<E>(
 
     override fun first(): E {
         if (size == 0) throw NoSuchElementException()
-        var page = 0
+        var page = rootPage
         while (!isLeafPage(page)) page = links[page * M]
         return keys[page * MAX_N] as E
     }
 
     override fun contains(element: E): Boolean {
-        var page = 0
+        var page = rootPage
         while (true) {
             val i = findIndex(page, element)
             if (i >= 0) return true
@@ -56,7 +58,7 @@ class BTreeSet<E>(
     }
 
     override fun add(element: E): Boolean {
-        val rp = addImpl(0, element)
+        val rp = addImpl(rootPage, element)
         if (rp < 0) return false
         size++
         if (rp == 0) return true
@@ -156,51 +158,34 @@ class BTreeSet<E>(
     }
 
     // splits root page after add, increasing tree level by one
+    // old rootPage goes to the left, rp becomes the right page
     private fun splitRootPage(rp: Int) {
-        // first copy old root to new page
-        val lp = allocateLeafPage()
-        keys.copyInto(keys, lp * MAX_N, 0, LN - 1)
-        keys[0] = keys[LN - 1]
-        keys.fill(null, 1, LN)
-        // now fix up root -- it is non-leaf and has 1 key and two children
-        val rootWasLeafPage = isLeafPage(0)
-        flags[0] = 1
-        allocatePageLinks(0)
-        if (rootWasLeafPage) {
-            flags[lp] = (LN - 1) or LEAF_FLAG
-        } else {
-            allocatePageLinks(lp)
-            links.copyInto(links, lp * M, 0, LN)
-            flags[lp] = LN - 1
-        }
-        links[0] = lp
-        links[1] = rp
-        links.fill(-1, 2, LN)
+        // allocate new root page and set it up
+        val np = allocateLeafPage()
+        allocatePageLinks(np)
+        keys[np * MAX_N] = keys[rootPage * MAX_N + LN - 1]
+        links[np * M] = rootPage // old root
+        links[np * M + 1] = rp
+        flags[np] = 1
+        // remove extra key from the original rootPage (left page) that was there after split
+        keys[rootPage * MAX_N + LN - 1] = null
+        rootPage = np
     }
 
     override fun remove(element: E): Boolean {
-        val res= removeImpl(0, element)
+        val res= removeImpl(rootPage, element)
         if (res < 0) return false
-        if (res == 0 && !isLeafPage(0)) removeDegenerateRootPage()
+        if (res == 0 && !isLeafPage(rootPage)) removeDegenerateRootPage()
         size--
         return true
     }
 
     // Drops root page after remove, decreasing tree level by one
     private fun removeDegenerateRootPage() {
-        val lp = links[0]
-        val lf = flags[lp]
-        val ln = lf and N_MASK
-        keys.copyInto(keys, 0, lp * MAX_N, lp * MAX_N + ln)
-        keys.fill(null, lp * MAX_N, lp * MAX_N + ln)
-        if ((lf and LEAF_FLAG) == 0) {
-            links.copyInto(links, 0, lp * M, lp * M + ln + 1)
-            links.fill(-1, lp * M, lp * M + ln + 1)
-        } else {
-            links[0] = -1
-        }
-        freePage(lp)
-        flags[0] = lf
+        val np = links[rootPage * M]
+        links[rootPage * M] = -1
+        freePage(rootPage)
+        rootPage = np
     }
     
     // Tries to remove an element from a page.
