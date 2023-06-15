@@ -170,8 +170,7 @@ class BTreeSet<E>(
 
     // Drops root page after remove, decreasing tree level by one
     private fun removeDegenerateRootPage() {
-        val np = getLink(rootPage, 0)
-        setLink(rootPage, 0, -1)
+        val np = getAndClearLink(rootPage, 0)
         freePage(rootPage)
         rootPage = np
     }
@@ -348,6 +347,11 @@ class BTreeSet<E>(
 
     private fun getLink(page: Int, index: Int) = links[page * M + index]
     private fun setLink(page: Int, index: Int, value: Int) { links[page * M + index] = value }
+
+    private fun getAndClearLink(page: Int, index: Int): Int {
+        val offset = page * M + index
+        return links[offset].also { links[offset] = -1 }
+    }
 
     private fun copyLinks(dstPage: Int, dstIndex: Int, srcPage: Int, startIndex: Int, endIndex: Int) {
         links.copyInto(links, dstPage * M + dstIndex, srcPage * M + startIndex, srcPage * M + endIndex)
