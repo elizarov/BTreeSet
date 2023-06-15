@@ -43,8 +43,8 @@ class BTreeSet<E>(
     override fun first(): E {
         if (size == 0) throw NoSuchElementException()
         var page = rootPage
-        while (!isLeafPage(page)) page = links[page * M]
-        return keys[page * MAX_N] as E
+        while (!isLeafPage(page)) page = getLink(page, 0)
+        return getKey(page, 0)
     }
 
     override fun contains(element: E): Boolean {
@@ -53,7 +53,7 @@ class BTreeSet<E>(
             val i = findIndex(page, element)
             if (i >= 0) return true
             if (isLeafPage(page)) return false
-            page = links[page * M - i - 1]
+            page = getLink(page, -i - 1)
         }
     }
 
@@ -86,22 +86,22 @@ class BTreeSet<E>(
             return 0
         }
         // adding to the non leaf page, first recurse into the corresponding page
-        val lp = links[page * M + j]
+        val lp = getLink(page, j)
         val rp = addImpl(lp, element)
         if (rp <= 0) return rp
         // no-leaf page needs to accommodate a new key
         if (n == MAX_N) return splitInternalPage(page, j, lp, rp)
-        insertLeafElement(page, j, n, keys[lp * MAX_N + LN - 1] as E)
-        keys[lp * MAX_N + LN - 1] = null
+        insertLeafElement(page, j, n, getKey(lp, LN - 1))
+        clearKey(lp, LN - 1)
         flags[page] = n + 1
-        links.copyInto(links, page * M + j + 1, page * M + j, page * M + n + 1)
-        links[page * M + j + 1] = rp
+        copyLinks(page, j + 1, page, j, n + 1)
+        setLink(page, j + 1, rp)
         return 0
     }
 
     private fun insertLeafElement(page: Int, j: Int, n: Int, element: E) {
-        keys.copyInto(keys, page * MAX_N + j + 1, page * MAX_N + j, page * MAX_N + n)
-        keys[page * MAX_N + j] = element
+        copyKeys(page, j + 1, page, j, n)
+        setKey(page, j, element)
     }
 
     // Splits the page's keys when it is full (n == MAX_N), when j is the new element insertion index.
@@ -120,40 +120,40 @@ class BTreeSet<E>(
         flags[rp] = RN or newFlag
         if (j < LN) {
             // new element added to the left page
-            keys.copyInto(keys, rp * MAX_N, page * MAX_N + LN - 1, page * MAX_N + MAX_N)
-            keys.copyInto(keys, page * MAX_N + j + 1, page * MAX_N + j, page * MAX_N + LN - 1)
-            keys[page * MAX_N + j] = element
+            copyKeys(rp, 0, page, LN - 1, MAX_N)
+            copyKeys(page, j + 1, page, j, LN - 1)
+            setKey(page, j, element)
         } else {
             // new element added to the right page, j >= LN
-            keys.copyInto(keys, rp * MAX_N, page * MAX_N + LN, page * MAX_N + j)
-            keys.copyInto(keys, rp * MAX_N + j - LN + 1, page * MAX_N + j, page * MAX_N + MAX_N)
-            keys[rp * MAX_N + j - LN] = element
+            copyKeys(rp, 0, page, LN, j)
+            copyKeys(rp, j - LN + 1, page, j, MAX_N)
+            setKey(rp, j - LN, element)
         }
-        keys.fill(null, page * MAX_N + LN, page * MAX_N + MAX_N)
+        clearKeys(page, LN, MAX_N)
         return rp
     }
 
     private fun splitInternalPage(page: Int, j: Int, lp: Int, rp0: Int): Int {
-        val rp = splitPageKeys(page, j, keys[lp * MAX_N + LN - 1] as E, 0)
+        val rp = splitPageKeys(page, j, getKey(lp, LN - 1), 0)
         allocatePageLinks(rp)
         if (j < LN) {
             // new element was added to the left page
-            links.copyInto(links, rp * M, page * M + LN - 1, page * M + M)
-            links.copyInto(links, page * M + j + 1, page * M + j, page * M + LN - 1)
+            copyLinks(rp, 0, page, LN - 1, M)
+            copyLinks(page, j + 1, page, j, LN - 1)
             if (j == LN - 1) {
-                links[rp * M] = rp0
+                setLink(rp, 0, rp0)
             } else {
-                links[page * M + j + 1] = rp0
+                setLink(page, j + 1, rp0)
             }
         } else {
             // new element added to the right page, j >= LN
-            links.copyInto(links, rp * M, page * M + LN, page * M + j)
-            links.copyInto(links, rp * M + j - LN + 2, page * M + j + 1, page * M + M)
-            links[rp * M + j - LN] = lp
-            links[rp * M + j - LN + 1] = rp0
+            copyLinks(rp, 0, page, LN, j)
+            copyLinks(rp, j - LN + 2, page, j + 1, M)
+            setLink(rp, j - LN, lp)
+            setLink(rp, j - LN + 1, rp0)
         }
-        links.fill(-1, page * M + LN, page * M + M)
-        links.fill(-1, rp * M + RN + 1, rp * M + M)
+        clearLinks(page, LN, M)
+        clearLinks(rp, RN + 1, M)
         return rp
     }
 
@@ -163,12 +163,11 @@ class BTreeSet<E>(
         // allocate new root page and set it up
         val np = allocateLeafPage()
         allocatePageLinks(np)
-        keys[np * MAX_N] = keys[rootPage * MAX_N + LN - 1]
-        links[np * M] = rootPage // old root
-        links[np * M + 1] = rp
+        copyKey(np, 0, rootPage, LN - 1)
+        clearKey(rootPage, LN - 1)
+        setLink(np, 0, rootPage) // old root
+        setLink(np, 1, rp)
         flags[np] = 1
-        // remove extra key from the original rootPage (left page) that was there after split
-        keys[rootPage * MAX_N + LN - 1] = null
         rootPage = np
     }
 
@@ -182,8 +181,8 @@ class BTreeSet<E>(
 
     // Drops root page after remove, decreasing tree level by one
     private fun removeDegenerateRootPage() {
-        val np = links[rootPage * M]
-        links[rootPage * M] = -1
+        val np = getLink(rootPage, 0)
+        setLink(rootPage, 0, -1)
         freePage(rootPage)
         rootPage = np
     }
@@ -197,7 +196,7 @@ class BTreeSet<E>(
             if (isLeafPage(page)) return -1 // leaf page -- element was not found
             // recursively remove from the child page
             val j = -i - 1
-            val lp = links[page * M + j]
+            val lp = getLink(page, j)
             val res = removeImpl(lp, element)
             if (res < 0) return -1
             if (res >= MIN_N) return nKeys(page)
@@ -209,15 +208,15 @@ class BTreeSet<E>(
         val n = flag and N_MASK
         if ((flag and LEAF_FLAG) != 0) {
             // remove element from leaf page
-            keys.copyInto(keys, page * MAX_N + i, page * MAX_N + i + 1, page * MAX_N + n)
+            copyKeys(page, i, page, i + 1, n)
             val newN = n - 1
-            keys[page * MAX_N + newN] = null
+            clearKey(page, newN)
             flags[page] = newN or LEAF_FLAG
             return newN
         }
         // remove element from non-leaf page by moving the last element from the left child into its place
-        val lp = links[page * M + i]
-        keys[page * MAX_N + i] = removeLastImpl(lp)
+        val lp = getLink(page, i)
+        setKey(page, i, removeLastImpl(lp))
         if (nKeys(lp) >= MIN_N) return n // everything is Ok w.r.t to size
         // the new page on the left is too small -- rebalance it
         return rebalancePageChildren(page, findRebalanceIndex(page, i))
@@ -228,14 +227,13 @@ class BTreeSet<E>(
     private fun removeLastImpl(page: Int): E {
         val n = nKeys(page)
         if (isLeafPage(page)) {
-            val keyOffset = page * MAX_N + n - 1
-            val result = keys[keyOffset] as E
-            keys[keyOffset] = null
+            val result = getKey(page, n - 1)
+            clearKey(page, n - 1)
             flags[page]--
             return result
         }
         // this page is not leaf, remove from the last one
-        val rp = links[page * M + n]
+        val rp = getLink(page, n)
         val result = removeLastImpl(rp)
         if (nKeys(rp) < MIN_N) rebalancePageChildren(page, n - 1)
         return result
@@ -243,15 +241,15 @@ class BTreeSet<E>(
 
     // Finds the index at which to call rebalancePageChildren when the child at in j has become underful
     private fun findRebalanceIndex(page: Int, j: Int): Int =
-        if (j == 0 || j < nKeys(page) - 1 && nKeys(links[page * M + j + 1]) > nKeys(links[page * M + j - 1]))
+        if (j == 0 || j < nKeys(page) - 1 && nKeys(getLink(page, j + 1)) > nKeys(getLink(page, j - 1)))
             j else j - 1
 
     // Rebalances children of page at positions k and k + 1 (one of them must have less than MIN_N keys)
     // Returns the resulting number of keys on page.
     private fun rebalancePageChildren(page: Int, k: Int): Int {
         val n = nKeys(page)
-        val lp = links[page * M + k]
-        val rp = links[page * M + k + 1]
+        val lp = getLink(page, k)
+        val rp = getLink(page, k + 1)
         val ln = nKeys(lp)
         val rn = nKeys(rp)
         val leafChildren = isLeafPage(lp)
@@ -260,19 +258,19 @@ class BTreeSet<E>(
         val ns = ln + rn
         if (ns + 1 <= MAX_N) {
             // merge both children
-            keys[lp * MAX_N + ln] = keys[page * MAX_N + k]
-            keys.copyInto(keys, lp * MAX_N + ln + 1, rp * MAX_N, rp * MAX_N + rn)
-            keys.fill(null, rp * MAX_N, rp * MAX_N + rn)
+            copyKey(lp, ln, page, k)
+            copyKeys(lp, ln + 1, rp, 0, rn)
+            clearKeys(rp, 0, rn)
             if (!leafChildren) {
-                links.copyInto(links, lp * M + ln + 1, rp * M, rp * M + rn + 1)
-                links.fill(-1, rp * M, rp * M + rn + 1)
+                copyLinks(lp, ln + 1, rp, 0, rn + 1)
+                clearLinks(rp, 0, rn + 1)
             }
             flags[lp] = flag(ns + 1, leafChildren)
             freePage(rp)
-            keys.copyInto(keys, page * MAX_N + k, page * MAX_N + k + 1, page * MAX_N + n)
-            keys[page * MAX_N + n - 1] = null
-            links.copyInto(links, page * M + k + 1, page * M + k + 2, page * M + n + 1)
-            links[page * M + n] = -1
+            copyKeys(page, k, page, k + 1, n)
+            clearKey(page, n - 1)
+            copyLinks(page, k + 1, page, k + 2, n + 1)
+            setLink(page, n, -1)
             flags[page] = n - 1
             return n - 1
         }
@@ -283,29 +281,29 @@ class BTreeSet<E>(
         if (ln1 > ln) {
             // move left
             val m = ln1 - ln
-            keys[lp * MAX_N + ln] = keys[page * MAX_N + k]
-            keys.copyInto(keys, lp * MAX_N + ln + 1, rp * MAX_N, rp * MAX_N + m - 1)
-            keys[page * MAX_N + k] = keys[rp * MAX_N + m - 1]
-            keys.copyInto(keys, rp * MAX_N, rp * MAX_N + m, rp * MAX_N + rn)
-            keys.fill(null, rp * MAX_N + rn1, rp * MAX_N + rn)
+            copyKey(lp, ln, page, k)
+            copyKeys(lp, ln + 1, rp, 0, m - 1)
+            copyKey(page, k, rp, m - 1)
+            copyKeys(rp, 0, rp, m, rn)
+            clearKeys(rp, rn1, rn)
             if (!leafChildren) {
-                links.copyInto(links, lp * M + ln + 1, rp * M, rp * M + m)
-                links.copyInto(links, rp * M, rp * M + m, rp * M + rn + 1)
-                links.fill(-1, rp * M + rn1 + 1, rp * M + rn + 1)
+                copyLinks(lp, ln + 1, rp, 0, m)
+                copyLinks(rp, 0, rp, m, rn + 1)
+                clearLinks(rp, rn1 + 1, rn + 1)
             }
         } else {
             // move right
             check(rn1 > rn)
             val m = rn1 - rn
-            keys.copyInto(keys, rp * MAX_N + m, rp * MAX_N, rp * MAX_N + rn)
-            keys[rp * MAX_N + m - 1] = keys[page * MAX_N + k]
-            keys.copyInto(keys, rp * MAX_N, lp * MAX_N + ln1 + 1, lp * MAX_N + ln)
-            keys[page * MAX_N + k] = keys[lp * MAX_N + ln1]
-            keys.fill(null, lp * MAX_N + ln1, lp * MAX_N + ln)
+            copyKeys(rp, m, rp, 0, rn)
+            copyKey(rp, m - 1, page, k)
+            copyKeys(rp, 0, lp, ln1 + 1, ln)
+            copyKey(page, k, lp, ln1)
+            clearKeys(lp, ln1, ln)
             if (!leafChildren) {
-                links.copyInto(links, rp * M + m, rp * M, rp * M + rn + 1)
-                links.copyInto(links, rp * M, lp * M + ln1 + 1, lp * M + ln + 1)
-                links.fill(-1, lp * M + ln1 + 1, lp * M + ln + 1)
+                copyLinks(rp, m, rp, 0, rn + 1)
+                copyLinks(rp, 0, lp, ln1 + 1, ln + 1)
+                clearLinks(lp, ln1 + 1, ln + 1)
             }
         }
         flags[lp] = flag(ln1, leafChildren)
@@ -317,12 +315,49 @@ class BTreeSet<E>(
     private fun isLeafPage(page: Int) = (flags[page] and LEAF_FLAG) != 0
     private fun nKeys(page: Int) = flags[page] and N_MASK
 
+    private fun getKey(page: Int, index: Int): E = keys[page * MAX_N + index] as E
+
+    private fun setKey(page: Int, index: Int, element: E) {
+        keys[page * MAX_N + index] = element
+    }
+
+    private fun copyKey(dstPage: Int, dstIndex: Int, srcPage: Int, srcIndex: Int) {
+        keys[dstPage * MAX_N + dstIndex] = keys[srcPage * MAX_N + srcIndex]
+    }
+
+    private fun copyKeys(dstPage: Int, dstIndex: Int, srcPage: Int, startIndex: Int, endIndex: Int) {
+        keys.copyInto(keys, dstPage * MAX_N + dstIndex, srcPage * MAX_N + startIndex, srcPage * MAX_N + endIndex)
+    }
+
+    private fun clearKey(dstPage: Int, dstIndex: Int) {
+        keys[dstPage * MAX_N + dstIndex] = null
+    }
+
+    private fun clearKeys(dstPage: Int, startIndex: Int, endIndex: Int) {
+        keys.fill(null, dstPage * MAX_N + startIndex, dstPage * MAX_N + endIndex)
+    }
+
+    private fun getLink(page: Int, index: Int) = links[page * M + index]
+
+    private fun setLink(page: Int, index: Int, value: Int) {
+        links[page * M + index] = value
+    }
+
+    private fun copyLinks(dstPage: Int, dstIndex: Int, srcPage: Int, startIndex: Int, endIndex: Int) {
+        links.copyInto(links, dstPage * M + dstIndex, srcPage * M + startIndex, srcPage * M + endIndex)
+    }
+
+    private fun clearLinks(dstPage: Int, startIndex: Int, endIndex: Int) {
+        links.fill(-1, dstPage * M + startIndex, dstPage * M + endIndex)
+    }
+
     // Returns index of an element in a page.
     // Returns negative number (-insertionIndex - 1) if not found.
     private fun findIndex(page: Int, element: E): Int {
         val n = flags[page] and N_MASK
+        val pageOffset = page * MAX_N
         for (i in 0 until n) {
-            val c = comparator.compare(element, keys[page * MAX_N + i] as E)
+            val c = comparator.compare(element, keys[pageOffset + i] as E)
             if (c == 0) return i
             if (c < 0) return -i - 1
         }
