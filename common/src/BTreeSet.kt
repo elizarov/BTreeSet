@@ -70,7 +70,7 @@ class BTreeSet<E>(
     // * result == -1 -- if the element was found, nothing was done
     // * result == 0 -- if the element was added, all is fine
     // * result > 0 -- if the page was split in two, the value is the new page index
-    //        -- this page became the left page (at it has the larger size);
+    //        -- this page became the left page (at it has the larger size, its last element must be moved up);
     //        -- new page became the right page.
     private fun addImpl(page: Int, element: E): Int {
         val i = findIndex(page, element)
@@ -81,7 +81,7 @@ class BTreeSet<E>(
         if ((flag and LEAF_FLAG) != 0) {
             // adding to the leaf page
             if (n == MAX_N) return splitPageKeys(page, j, element, LEAF_FLAG)
-            insertLeafElement(page, j, n, element)
+            insertKey(page, j, n, element)
             flags[page] = (n + 1) or LEAF_FLAG
             return 0
         }
@@ -91,17 +91,10 @@ class BTreeSet<E>(
         if (rp <= 0) return rp
         // no-leaf page needs to accommodate a new key
         if (n == MAX_N) return splitInternalPage(page, j, lp, rp)
-        insertLeafElement(page, j, n, getKey(lp, LN - 1))
-        clearKey(lp, LN - 1)
+        insertKey(page, j, n, getAndClearKey(lp, LN - 1))
+        insertLink(page, j + 1, n + 1, rp)
         flags[page] = n + 1
-        copyLinks(page, j + 1, page, j, n + 1)
-        setLink(page, j + 1, rp)
         return 0
-    }
-
-    private fun insertLeafElement(page: Int, j: Int, n: Int, element: E) {
-        copyKeys(page, j + 1, page, j, n)
-        setKey(page, j, element)
     }
 
     // Splits the page's keys when it is full (n == MAX_N), when j is the new element insertion index.
@@ -120,16 +113,14 @@ class BTreeSet<E>(
         flags[rp] = RN or newFlag
         if (j < LN) {
             // new element added to the left page
-            copyKeys(rp, 0, page, LN - 1, MAX_N)
-            copyKeys(page, j + 1, page, j, LN - 1)
-            setKey(page, j, element)
+            moveKeys(rp, 0, page, LN - 1, MAX_N)
+            insertKey(page, j, LN - 1, element)
         } else {
             // new element added to the right page, j >= LN
-            copyKeys(rp, 0, page, LN, j)
-            copyKeys(rp, j - LN + 1, page, j, MAX_N)
+            moveKeys(rp, 0, page, LN, j)
+            moveKeys(rp, j - LN + 1, page, j, MAX_N)
             setKey(rp, j - LN, element)
         }
-        clearKeys(page, LN, MAX_N)
         return rp
     }
 
@@ -153,7 +144,6 @@ class BTreeSet<E>(
             setLink(rp, j - LN + 1, rp0)
         }
         clearLinks(page, LN, M)
-        clearLinks(rp, RN + 1, M)
         return rp
     }
 
@@ -163,8 +153,7 @@ class BTreeSet<E>(
         // allocate new root page and set it up
         val np = allocateLeafPage()
         allocatePageLinks(np)
-        copyKey(np, 0, rootPage, LN - 1)
-        clearKey(rootPage, LN - 1)
+        moveKey(np, 0, rootPage, LN - 1)
         setLink(np, 0, rootPage) // old root
         setLink(np, 1, rp)
         flags[np] = 1
@@ -204,20 +193,16 @@ class BTreeSet<E>(
             return rebalancePageChildren(page, findRebalanceIndex(page, j))
         }
         // element was found at index i
-        val flag = flags[page]
-        val n = flag and N_MASK
-        if ((flag and LEAF_FLAG) != 0) {
+        if (isLeafPage(page)) {
             // remove element from leaf page
-            copyKeys(page, i, page, i + 1, n)
-            val newN = n - 1
-            clearKey(page, newN)
-            flags[page] = newN or LEAF_FLAG
-            return newN
+            val n = nKeys(page)
+            removeKey(page, i, n)
+            return (n - 1).also { flags[page] = it or LEAF_FLAG }
         }
         // remove element from non-leaf page by moving the last element from the left child into its place
         val lp = getLink(page, i)
         setKey(page, i, removeLastImpl(lp))
-        if (nKeys(lp) >= MIN_N) return n // everything is Ok w.r.t to size
+        if (nKeys(lp) >= MIN_N) return nKeys(page) // everything is Ok w.r.t to size
         // the new page on the left is too small -- rebalance it
         return rebalancePageChildren(page, findRebalanceIndex(page, i))
     }
@@ -226,12 +211,7 @@ class BTreeSet<E>(
     // The caller must take care of rebalancing the page if needed.
     private fun removeLastImpl(page: Int): E {
         val n = nKeys(page)
-        if (isLeafPage(page)) {
-            val result = getKey(page, n - 1)
-            clearKey(page, n - 1)
-            flags[page]--
-            return result
-        }
+        if (isLeafPage(page)) return getAndClearKey(page, n - 1).also { flags[page] = (n - 1) or LEAF_FLAG }
         // this page is not leaf, remove from the last one
         val rp = getLink(page, n)
         val result = removeLastImpl(rp)
@@ -259,20 +239,13 @@ class BTreeSet<E>(
         if (ns + 1 <= MAX_N) {
             // merge both children
             copyKey(lp, ln, page, k)
-            copyKeys(lp, ln + 1, rp, 0, rn)
-            clearKeys(rp, 0, rn)
-            if (!leafChildren) {
-                copyLinks(lp, ln + 1, rp, 0, rn + 1)
-                clearLinks(rp, 0, rn + 1)
-            }
+            moveKeys(lp, ln + 1, rp, 0, rn)
+            if (!leafChildren) moveLinks(lp, ln + 1, rp, 0, rn + 1)
             flags[lp] = flag(ns + 1, leafChildren)
             freePage(rp)
-            copyKeys(page, k, page, k + 1, n)
-            clearKey(page, n - 1)
-            copyLinks(page, k + 1, page, k + 2, n + 1)
-            setLink(page, n, -1)
-            flags[page] = n - 1
-            return n - 1
+            removeKey(page, k, n)
+            removeLink(page, k + 1, n + 1)
+            return (n - 1).also { flags[page] = it }
         }
         // redistribute evenly
         val ln1 = ns / 2
@@ -297,13 +270,11 @@ class BTreeSet<E>(
             val m = rn1 - rn
             copyKeys(rp, m, rp, 0, rn)
             copyKey(rp, m - 1, page, k)
-            copyKeys(rp, 0, lp, ln1 + 1, ln)
-            copyKey(page, k, lp, ln1)
-            clearKeys(lp, ln1, ln)
+            moveKeys(rp, 0, lp, ln1 + 1, ln)
+            moveKey(page, k, lp, ln1)
             if (!leafChildren) {
                 copyLinks(rp, m, rp, 0, rn + 1)
-                copyLinks(rp, 0, lp, ln1 + 1, ln + 1)
-                clearLinks(lp, ln1 + 1, ln + 1)
+                moveLinks(rp, 0, lp, ln1 + 1, ln + 1)
             }
         }
         flags[lp] = flag(ln1, leafChildren)
@@ -311,37 +282,72 @@ class BTreeSet<E>(
         return n
     }
 
+    // Returns index of an element in a page.
+    // Returns negative number (-insertionIndex - 1) if not found.
+    private fun findIndex(page: Int, element: E): Int {
+        val n = nKeys(page)
+        val pageOffset = page * MAX_N
+        for (i in 0 until n) {
+            val c = comparator.compare(element, keys[pageOffset + i] as E)
+            if (c == 0) return i
+            if (c < 0) return -i - 1
+        }
+        return -n - 1
+    }
+
+    // --- flags management ---
+
     private fun flag(n: Int, leaf: Boolean): Int = if (leaf) n or LEAF_FLAG else n
     private fun isLeafPage(page: Int) = (flags[page] and LEAF_FLAG) != 0
     private fun nKeys(page: Int) = flags[page] and N_MASK
 
-    private fun getKey(page: Int, index: Int): E = keys[page * MAX_N + index] as E
+    // --- keys array management ---
 
-    private fun setKey(page: Int, index: Int, element: E) {
-        keys[page * MAX_N + index] = element
+    private fun getKey(page: Int, index: Int): E = keys[page * MAX_N + index] as E
+    private fun setKey(page: Int, index: Int, key: E) { keys[page * MAX_N + index] = key }
+    private fun clearKey(page: Int, index: Int) { keys[page * MAX_N + index] = null }
+
+    private fun getAndClearKey(page: Int, index: Int): E {
+        val offset = page * MAX_N + index
+        return (keys[offset] as E).also { keys[offset] = null }
     }
 
     private fun copyKey(dstPage: Int, dstIndex: Int, srcPage: Int, srcIndex: Int) {
         keys[dstPage * MAX_N + dstIndex] = keys[srcPage * MAX_N + srcIndex]
     }
 
+    private fun moveKey(dstPage: Int, dstIndex: Int, srcPage: Int, srcIndex: Int) {
+        copyKey(dstPage, dstIndex, srcPage, srcIndex)
+        clearKey(srcPage, srcIndex)
+    }
+
     private fun copyKeys(dstPage: Int, dstIndex: Int, srcPage: Int, startIndex: Int, endIndex: Int) {
         keys.copyInto(keys, dstPage * MAX_N + dstIndex, srcPage * MAX_N + startIndex, srcPage * MAX_N + endIndex)
     }
 
-    private fun clearKey(dstPage: Int, dstIndex: Int) {
-        keys[dstPage * MAX_N + dstIndex] = null
+    private fun clearKeys(page: Int, startIndex: Int, endIndex: Int) {
+        keys.fill(null, page * MAX_N + startIndex, page * MAX_N + endIndex)
     }
 
-    private fun clearKeys(dstPage: Int, startIndex: Int, endIndex: Int) {
-        keys.fill(null, dstPage * MAX_N + startIndex, dstPage * MAX_N + endIndex)
+    private fun moveKeys(dstPage: Int, dstIndex: Int, srcPage: Int, startIndex: Int, endIndex: Int) {
+        copyKeys(dstPage, dstIndex, srcPage, startIndex, endIndex)
+        clearKeys(srcPage, startIndex, endIndex)
     }
+
+    private fun insertKey(page: Int, index: Int, endIndex: Int, key: E) {
+        copyKeys(page, index + 1, page, index, endIndex)
+        setKey(page, index, key)
+    }
+
+    private fun removeKey(page: Int, index: Int, endIndex: Int) {
+        copyKeys(page, index, page, index + 1, endIndex)
+        clearKey(page, endIndex - 1)
+    }
+
+    // --- links array management ---
 
     private fun getLink(page: Int, index: Int) = links[page * M + index]
-
-    private fun setLink(page: Int, index: Int, value: Int) {
-        links[page * M + index] = value
-    }
+    private fun setLink(page: Int, index: Int, value: Int) { links[page * M + index] = value }
 
     private fun copyLinks(dstPage: Int, dstIndex: Int, srcPage: Int, startIndex: Int, endIndex: Int) {
         links.copyInto(links, dstPage * M + dstIndex, srcPage * M + startIndex, srcPage * M + endIndex)
@@ -351,18 +357,22 @@ class BTreeSet<E>(
         links.fill(-1, dstPage * M + startIndex, dstPage * M + endIndex)
     }
 
-    // Returns index of an element in a page.
-    // Returns negative number (-insertionIndex - 1) if not found.
-    private fun findIndex(page: Int, element: E): Int {
-        val n = flags[page] and N_MASK
-        val pageOffset = page * MAX_N
-        for (i in 0 until n) {
-            val c = comparator.compare(element, keys[pageOffset + i] as E)
-            if (c == 0) return i
-            if (c < 0) return -i - 1
-        }
-        return -n - 1
+    private fun moveLinks(dstPage: Int, dstIndex: Int, srcPage: Int, startIndex: Int, endIndex: Int) {
+        copyLinks(dstPage, dstIndex, srcPage, startIndex, endIndex)
+        clearLinks(srcPage, startIndex, endIndex)
     }
+
+    private fun insertLink(page: Int, index: Int, endIndex: Int, value: Int) {
+        copyLinks(page, index + 1, page, index, endIndex)
+        setLink(page, index, value)
+    }
+
+    private fun removeLink(page: Int, index: Int, endIndex: Int) {
+        copyLinks(page, index, page, index + 1, endIndex)
+        setLink(page, endIndex - 1, -1)
+    }
+
+    // --- free pages management ---
 
     // Allocates new leaf page, makes sure keys and flags have enough capacity, but does not fill them.
     private fun allocateLeafPage(): Int {
