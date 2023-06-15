@@ -225,27 +225,18 @@ class BTreeSet<E>(
         val rp = getLink(page, k + 1)
         val ln = nKeys(lp)
         val rn = nKeys(rp)
-        val leafChildren = isLeafPage(lp)
         check(ln < MIN_N || rn < MIN_N)
-        check(leafChildren == isLeafPage(rp))
         val ns = ln + rn
         if (ns + 1 <= MAX_N) {
             // merge both children
-            val n = nKeys(page)
-            copyKey(lp, ln, page, k)
-            moveKeys(lp, ln + 1, rp, 0, rn)
-            if (!leafChildren) moveLinks(lp, ln + 1, rp, 0, rn + 1)
-            flags[lp] = flag(ns + 1, leafChildren)
-            freePage(rp)
-            removeKey(page, k, n)
-            removeLink(page, k + 1, n + 1)
-            flags[page] = n - 1
+            mergePageChildren(page, k, lp, ln, rp, rn)
             return
         }
         // redistribute evenly
-        val ln1 = ns / 2
-        val rn1 = ns - ln1
+        val rn1 = ns / 2 // leave smaller part to right
+        val ln1 = ns - rn1 // larger to the left
         check(ln1 >= MIN_N && rn1 >= MIN_N)
+        val leaf = isLeafPage(lp)
         if (ln1 > ln) {
             // move left
             val m = ln1 - ln
@@ -254,7 +245,7 @@ class BTreeSet<E>(
             copyKey(page, k, rp, m - 1)
             copyKeys(rp, 0, rp, m, rn)
             clearKeys(rp, rn1, rn)
-            if (!leafChildren) {
+            if (!leaf) {
                 copyLinks(lp, ln + 1, rp, 0, m)
                 copyLinks(rp, 0, rp, m, rn + 1)
                 clearLinks(rp, rn1 + 1, rn + 1)
@@ -267,14 +258,27 @@ class BTreeSet<E>(
             copyKey(rp, m - 1, page, k)
             moveKeys(rp, 0, lp, ln1 + 1, ln)
             moveKey(page, k, lp, ln1)
-            if (!leafChildren) {
+            if (!leaf) {
                 copyLinks(rp, m, rp, 0, rn + 1)
                 moveLinks(rp, 0, lp, ln1 + 1, ln + 1)
             }
         }
-        flags[lp] = flag(ln1, leafChildren)
-        flags[rp] = flag(rn1, leafChildren)
+        flags[lp] = flag(ln1, leaf)
+        flags[rp] = flag(rn1, leaf)
         return
+    }
+
+    private fun mergePageChildren(page: Int, k: Int, lp: Int, ln: Int, rp: Int, rn: Int) {
+        val n = nKeys(page)
+        val leaf = isLeafPage(lp)
+        copyKey(lp, ln, page, k)
+        moveKeys(lp, ln + 1, rp, 0, rn)
+        if (!leaf) moveLinks(lp, ln + 1, rp, 0, rn + 1)
+        flags[lp] = flag(ln + rn + 1, leaf)
+        freePage(rp)
+        removeKey(page, k, n)
+        removeLink(page, k + 1, n + 1)
+        flags[page] = n - 1
     }
 
     // Returns index of an element in a page.
