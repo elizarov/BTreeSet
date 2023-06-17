@@ -231,12 +231,12 @@ class BTreeSet<E>(
             // merge both children
             mergePageChildren(page, k, lp, ln, rp, rn)
         } else {
-            // redistribute evenly, compute how more to the right is needed
+            // redistribute evenly, compute how much more keys to the right are needed
             val m = ns / 2 - rn // leave smaller part (rounded down) to the right
-            if (m > 0) {
-                rotatePageChildrenRight(page, k, lp, ln, rp, rn, m)
-            } else {
-                rotatePageChildrenLeft(page, k, lp, ln, rp, rn, -m)
+            when {
+                m > 0 -> rotatePageChildrenR(page, k, lp, ln, rp, rn, m)
+                m < 0 -> rotatePageChildrenL(page, k, lp, ln, rp, rn, -m)
+                else -> error("cannot happen")
             }
         }
     }
@@ -245,38 +245,36 @@ class BTreeSet<E>(
     //  lp, ln -- the child at k and its number of keys
     //  rp, rn -- the child at k+1 and its number of keys
     //  m      -- the number of keys to rotate from lp to rp
-    private fun rotatePageChildrenRight(page: Int, k: Int, lp: Int, ln: Int, rp: Int, rn: Int, m: Int) {
+    private fun rotatePageChildrenR(page: Int, k: Int, lp: Int, ln: Int, rp: Int, rn: Int, m: Int) {
         copyKeys(rp, m, rp, 0, rn)
         copyKey(rp, m - 1, page, k)
         moveKeys(rp, 0, lp, ln + 1 - m, ln)
         moveKey(page, k, lp, ln - m)
-        val leaf = isLeafPage(lp)
-        if (!leaf) {
+        if (!isLeafPage(lp)) {
             copyLinks(rp, m, rp, 0, rn + 1)
             moveLinks(rp, 0, lp, ln + 1 - m, ln + 1)
         }
-        flags[lp] = flag(ln - m, leaf)
-        flags[rp] = flag(rn + m, leaf)
+        flags[lp] -= m
+        flags[rp] += m
     }
 
     // Rotates page children of page at positions k and k+1 to the left.
     //  lp, ln -- the child at k and its number of keys
     //  rp, rn -- the child at k+1 and its number of keys
     //  m      -- the number of keys to rotate from rp to lp
-    private fun rotatePageChildrenLeft(page: Int, k: Int, lp: Int, ln: Int, rp: Int, rn: Int, m: Int) {
+    private fun rotatePageChildrenL(page: Int, k: Int, lp: Int, ln: Int, rp: Int, rn: Int, m: Int) {
         copyKey(lp, ln, page, k)
         copyKeys(lp, ln + 1, rp, 0, m - 1)
         copyKey(page, k, rp, m - 1)
         copyKeys(rp, 0, rp, m, rn)
         clearKeys(rp, rn - m, rn)
-        val leaf = isLeafPage(lp)
-        if (!leaf) {
+        if (!isLeafPage(lp)) {
             copyLinks(lp, ln + 1, rp, 0, m)
             copyLinks(rp, 0, rp, m, rn + 1)
             clearLinks(rp, rn + 1 - m, rn + 1)
         }
-        flags[lp] = flag(ln + m, leaf)
-        flags[rp] = flag(rn - m, leaf)
+        flags[lp] += m
+        flags[rp] -= m
     }
 
     // Merges page children of page at positions k and k+1, removing one the children.
