@@ -14,8 +14,9 @@ private const val N_MASK = LEAF_FLAG - 1
 private val EMPTY_LINKS = intArrayOf()
 
 // Function that specified the minimal growth factor of internal arrays.
-// A factor of x1.5 is used just like in ArrayList implementation, but always realloc first for at least 4 pages
-fun minGrow(size: Int) = (size * 3 / 2).coerceAtLeast(4)
+// A factor of x1.5 is used just like in ArrayList implementation, but always realloc first for at least 3 pages
+// It gives initialize allocated capacities of: 1, 3, 5, 8, 12, ...
+fun minGrow(size: Int) = ((size * 3 + 1) / 2).coerceAtLeast(3)
 
 // SortedSet implementation as a B-Tree of order M.
 // It is optimized for small root-only trees.
