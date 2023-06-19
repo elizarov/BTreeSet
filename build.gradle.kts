@@ -7,7 +7,9 @@ repositories {
 }
 
 kotlin {
-    jvm()
+    jvm {
+        withJava()
+    }
     val osName = System.getProperty("os.name")
     when {
         osName.contains("Windows") -> mingwX64("native")

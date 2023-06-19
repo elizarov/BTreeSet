@@ -1,3 +1,4 @@
+rootProject.name = "BTreeSet"
 
-rootProject.name = "SortedSetImpl"
+include("benchmarks")
 

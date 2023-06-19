@@ -1,3 +1,5 @@
+package sortedset
+
 // This interface is declared only for the purpose of testing on JVM,
 // so that both java.util.TreeSet and BTreeSet implementations can be tested against the same testsuite.
 interface SortedSet<E> {
