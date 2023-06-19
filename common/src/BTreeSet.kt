@@ -1,6 +1,6 @@
 package sortedset
 
-private const val M = 5 // The order the B-tree -- the max number of children on a page.
+private const val M = 8 // The order the B-tree -- the max number of children on a page.
 private const val MAX_N = M - 1 // Max number of keys in a page.
 private const val MIN_N = MAX_N / 2 // Min number of keys in a page.
 
@@ -302,14 +302,47 @@ class BTreeSet<E>(
     // Returns index of an element in a page.
     // Returns negative number (-insertionIndex - 1) if not found.
     private fun findIndex(page: Int, element: E): Int {
-        val n = nKeys(page)
+//        // **LINEAR
+//        val n = nKeys(page)
+//        val pageOffset = page * MAX_N
+//        for (i in 0 until n) {
+//            val c = comparator.compare(element, keys[pageOffset + i] as E)
+//            if (c == 0) return i
+//            if (c < 0) return -i - 1
+//        }
+//        return -n - 1
+
+//        // **BINARY
+//        var l = -1
+//        var r = nKeys(page)
+//        val pageOffset = page * MAX_N
+//        while (l + 1 < r) {
+//            val i = (l + r) / 2
+//            val c = comparator.compare(element, keys[pageOffset + i] as E)
+//            when {
+//                c < 0 -> r = i
+//                c > 0 -> l = i
+//                else -> return i
+//            }
+//        }
+//        return -l - 2
+
+        // **OPT BINARY
+        val comparator = comparator
         val pageOffset = page * MAX_N
-        for (i in 0 until n) {
+        val keys = keys
+        var l = -1
+        var r = flags[page] and N_MASK // nKeys(page) inlined
+        while (l + 1 < r) {
+            val i = (l + r) / 2
             val c = comparator.compare(element, keys[pageOffset + i] as E)
-            if (c == 0) return i
-            if (c < 0) return -i - 1
+            when {
+                c < 0 -> r = i
+                c > 0 -> l = i
+                else -> return i
+            }
         }
-        return -n - 1
+        return -l - 2
     }
 
     // --- flags management ---
