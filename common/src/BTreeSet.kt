@@ -81,18 +81,21 @@ class BTreeSet<E>(
         val j = -i - 1 // insertion index
         val flag = flags[page]
         val n = flag and N_MASK
-        if ((flag and LEAF_FLAG) != 0) {
-            // adding to the leaf page
-            if (n == MAX_N) return splitPageKeys(page, j, element, LEAF_FLAG)
-            insertKey(page, j, n, element)
-            flags[page] = (n + 1) or LEAF_FLAG
-            return 0
-        }
-        // adding to the non leaf page, first recurse into the corresponding page
+        if ((flag and LEAF_FLAG) == 0) return addToInternalPage(page, j, n, element)
+        // adding to the leaf page
+        if (n == MAX_N) return splitPageKeys(page, j, element, LEAF_FLAG)
+        insertKey(page, j, n, element)
+        flags[page] = (n + 1) or LEAF_FLAG
+        return 0
+    }
+
+    // Tries to add element to internal page at link position j with n keys on a page.
+    // Resulting value is the same as for addImpl.
+    private fun addToInternalPage(page: Int, j: Int, n: Int, element: E): Int {
         val lp = getLink(page, j)
-        val rp = addImpl(lp, element)
+        val rp = addImpl(lp, element) // recursively add first
         if (rp <= 0) return rp
-        // no-leaf page needs to accommodate a new key
+        // this internal page needs to accommodate a new key
         if (n == MAX_N) return splitInternalPage(page, j, lp, rp)
         insertKey(page, j, n, getAndClearKey(lp, LN - 1))
         insertLink(page, j + 1, n + 1, rp)
