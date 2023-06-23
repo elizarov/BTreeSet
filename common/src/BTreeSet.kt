@@ -327,22 +327,39 @@ class BTreeSet<E>(
 //        }
 //        return -l - 2
 
-        // **OPT BINARY
+//        // **OPT BINARY (exclusive)
+//        val comparator = comparator
+//        val pageOffset = page * MAX_N
+//        val keys = keys
+//        var l = -1
+//        var r = flags[page] and N_MASK // nKeys(page) inlined
+//        while (l + 1 < r) {
+//            val i = (l + r) / 2
+//            val c = comparator.compare(element, keys[pageOffset + i] as E)
+//            when {
+//                c < 0 -> r = i
+//                c > 0 -> l = i
+//                else -> return i
+//            }
+//        }
+//        return -l - 2
+
+        // **OPT BINARY (inclusive)
         val comparator = comparator
         val pageOffset = page * MAX_N
         val keys = keys
-        var l = -1
-        var r = flags[page] and N_MASK // nKeys(page) inlined
-        while (l + 1 < r) {
+        var l = 0
+        var r = (flags[page] and N_MASK) - 1
+        while (l <= r) {
             val i = (l + r) / 2
             val c = comparator.compare(element, keys[pageOffset + i] as E)
             when {
-                c < 0 -> r = i
-                c > 0 -> l = i
+                c < 0 -> r = i - 1
+                c > 0 -> l = i + 1
                 else -> return i
             }
         }
-        return -l - 2
+        return -l - 1
     }
 
     // --- flags management ---
