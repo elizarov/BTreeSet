@@ -3,10 +3,9 @@ package sortedset
 import kotlin.random.*
 import kotlin.test.*
 
-open class SortedSetTest {
-    protected open val factory: SortedSetFactory
-        get() = SortedSetImplFactory
-    
+abstract class SortedSetTest {
+    protected abstract val factory: SortedSetFactory
+
     private fun <E: Comparable<*>> sortedSetOf(vararg elements: E): SortedSet<E> =
         sortedSetOf(compareBy { it }, *elements)
 

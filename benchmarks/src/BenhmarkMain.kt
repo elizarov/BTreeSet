@@ -21,5 +21,5 @@ open class BTreeSetBenchmark : SortedSetBenchmark() {
 @Measurement(iterations = 8, time = 1, timeUnit = TimeUnit.SECONDS)
 open class JTreeSetBenchmark : SortedSetBenchmark() {
     override val factory: () -> SortedSet<Key>
-        get() = {  SortedSetImpl(KeyComparator) }
+        get() = {  JTreeSet(KeyComparator) }
 }

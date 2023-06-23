@@ -13,13 +13,3 @@ interface SortedSet<E> {
 interface SortedSetFactory {
     fun <E> createSortedSet(comparator: Comparator<in E>): SortedSet<E>
 }
-
-object SortedSetImplFactory : SortedSetFactory {
-    override fun <E> createSortedSet(comparator: Comparator<in E>): SortedSet<E> =
-        SortedSetImpl(comparator)
-}
-
-object BTreeSetFactory : SortedSetFactory {
-    override fun <E> createSortedSet(comparator: Comparator<in E>): SortedSet<E> =
-        BTreeSet(comparator)
-}
