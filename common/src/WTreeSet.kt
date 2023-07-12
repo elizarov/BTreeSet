@@ -40,97 +40,95 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
     }
 
     override fun add(element: E): Boolean {
-        root = root.addImpl(element) ?: return false
+        root?.addImpl(element)?.let { return it }
+        root = Node(element)
         return true
     }
 
     // Adds element to the subtree at this node
-    //  * Returns new reference to the subtree.
-    //  * Returns null if the element was found.
-    private fun Node<E>?.addImpl(element: E): Node<E>? {
-        if (this == null) return Node(element)
+    private fun Node<E>.addImpl(element: E): Boolean {
         val c = comparator.compare(element, key)
         val rt = c > 0
         val p = when {
             rt -> right
             c < 0 -> left
-            else -> return null
-        }.addImpl(element) ?: return null
-        this[rt] = p
-        // rebalance if needed
-        if (rank <= p.rank) return rebalanceAfterAdd(rt, p)
-        assert { rank <= p.rank + 2 }
-        return this // ok, no need to rebalance
+            else -> return false
+        }
+        p?.addImpl(element)?.let { res ->
+            // rebalance if needed
+            assert { rank <= p.rank + 2 }
+            if (res && rank <= p.rank) rebalanceAfterAdd(rt, p)
+            return res
+        }
+        this[rt] = Node(element)
+        return true
     }
 
-    private fun Node<E>.rebalanceAfterAdd(rt: Boolean, p: Node<E>): Node<E> {
+    private fun Node<E>.rebalanceAfterAdd(rt: Boolean, p: Node<E>) {
         assert { this[rt] === p && rank == p.rank }
         val q = this[!rt]
         val dq = rank - q.rank
         if (dq == 1) { // this is 0,1 node
             rank++ // promote this node to 1,2
-            return this
+            return
         }
         // this is 0,2 node
         assert { dq == 2 }
         val r = p[rt]
         if (p.rank == r.rank + 1) {
             //  Note: the picture is for rt = false
-            //       [this]
-            //      / 0   \ 2
-            //     [p]     [q]
+            //         [t]<-this
+            //      / 0    \ 2
+            //     [p]<-p   [q]
             //  1 /  \ 2
             //  [r]   [s]
             assert { p.rank == p[!rt].rank + 2 }
             rotate(!rt)
-            //       [p]
-            //    1 /   \ 0
-            //    [r]    [this]
-            //        2 /     \ 2
-            //         [s]    [q]
-            rank-- // demote this node
-            //       [p]
-            //    1 /   \ 1
-            //    [r]    [this]
-            //        1 /     \ 1
-            //         [s]    [q]
-            return p
+            //        [p]<-this
+            //    1 /    \ 0
+            //    [r]      [t]<-p
+            //         2 /     \ 2
+            //          [s]    [q]
+            p.rank-- // demote p
+            //        [p]<-this
+            //    1 /    \ 1
+            //    [r]      [t]<-p
+            //         1 /     \ 1
+            //          [s]    [q]
         } else {
             //  Note: the picture is for rt = false
-            //       [this]
-            //      / 0   \ 2
-            //     [p]     [q]
+            //          [t]<-this
+            //      / 0     \ 2
+            //     [p]<-p   [q]
             //  2 /  \ 1
-            //  [r]   [s]
+            //  [r]   [s]<-s
             //   1,2 /  \ 1,2
             //      [b] [c]
             val s = p[!rt]!!
             assert { p.rank == r.rank + 2 }
             assert { p.rank == s.rank + 1 }
             p.rotate(rt)
-            this[rt] = s
-            //           [this]
-            //        1 /     \ 2
-            //        [s]     [q]
-            //    -1 /  \ 1,2
-            //     [p]  [c]
+            //              [t]<-this
+            //         1 /       \ 2
+            //         [s]<-p    [q]
+            //    -1 /    \ 1,2
+            //     [p]<-s  [c]
             //  2 /  \ 2,3
             //  [r]  [b]
             rotate(!rt)
-            //             [s]
-            //     -1  /        \ -1
-            //     [p]           [this]
-            // 2  /   \ 2,3   2,3 /    \ 2
+            //             [s]<-this
+            //     -1  /          \ -1
+            //     [p]<-s          [t]<-p
+            // 2  /   \ 2,3   2,3 /   \ 2
             //  [r]   [b]      [c]      [q]
-            s.rank++
+            rank++
+            s.rank--
             p.rank--
-            rank--
-            //            [s]
-            //     1  /        \  1
-            //     [p]           [this]
-            // 1  /   \ 1,2   1,2 /    \ 1
+            //             [s]<-this
+            //      1  /          \  1
+            //     [p]<-s          [t]<-p
+            // 1  /   \ 1,2   1,2 /   \ 1
             //  [r]   [b]      [c]      [q]
-            return s
         }
     }
 
@@ -313,23 +311,30 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
     // Rotates the node, rt shows direction of rotation
     // rt = true : left child is rotated to the right (as shown in the picture)
     // rt = false: right child is rotated to the left (mirror image)
+    // Note, that p & this node keys and ranks get swapped
     // --- BEFORE in rt = true ----
-    //       [this]
-    //      /    \
-    //     [p]     [q]
+    //         [t]<-this
+    //      /      \
+    //     [p]<-p   [q]
     //   /  \
     //  [r]   [s]
     // --- AFTER in rt = true ----
-    //       [p]
+    //       [p]<-this
     //      /   \
-    //    [r]    [this]
-    //          /     \
-    //         [s]    [q]
+    //    [r]    [t]<-p
+    //         /     \
+    //        [s]    [q]
     private fun <E> Node<E>.rotate(rt: Boolean) {
         val p = this[!rt]!!
+        val q = this[rt]
+        val r = p[!rt]
         val s = p[rt]
-        p[rt] = this
-        this[!rt] = s
+        this[!rt] = r
+        this[rt] = p
+        p[!rt] = s
+        p[rt] = q
+        key = p.key.also { p.key = key }
+        rank = p.rank.also { p.rank = rank }
     }
     
     private inline fun assert(cond: () -> Boolean) {
