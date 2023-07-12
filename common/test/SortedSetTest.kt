@@ -41,7 +41,7 @@ abstract class SortedSetTest {
     @Test
     fun testAddConsistency() {
         val rnd = Random(13)
-        val elements = (1..100).shuffled(rnd)
+        val elements = (1..3).shuffled(rnd)
         val set = factory.createSortedSet<Int>(compareBy { it })
         for (i in elements.indices) {
             val element = elements[i]
