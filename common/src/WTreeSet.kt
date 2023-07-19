@@ -16,7 +16,10 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
     private val Node<E>?.rank: Int get() = this?.rank ?: -1
 
     private val Node<*>.isLeaf: Boolean
-        get() = rank == 0
+        get() {
+            assert { if (left == null && right == null) rank == 0 else true }
+            return rank == 0
+        }
 
     override fun isEmpty(): Boolean = root == null
 
@@ -49,18 +52,18 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
     private fun Node<E>.addImpl(element: E): Boolean {
         val c = comparator.compare(element, key)
         val rt = c > 0
-        val p = when {
+        var p = when {
             rt -> right
             c < 0 -> left
             else -> return false
         }
-        p?.addImpl(element)?.let { res ->
-            // rebalance if needed
-            assert { rank <= p.rank + 2 }
-            if (res && rank <= p.rank) rebalanceAfterAdd(rt, p)
-            return res
+        if (p == null) {
+            p = Node(element)
+            this[rt] = p
+        } else {
+            if (!p.addImpl(element)) return false
         }
-        this[rt] = Node(element)
+        if (rank <= p.rank) rebalanceAfterAdd(rt, p)
         return true
     }
 
@@ -212,50 +215,50 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
         }
         val result = if (right.isLeaf) {
             this.right = null
+            if (left == null) {
+                rank = 0
+                return right.key // node became leaf -- no further rebalance needed
+            }
             right.key
         } else {
             right.removeLastFromNonLeafNode()
         }
         rebalanceAfterRemoveIfNeeded(rt = true)
-        TODO() // ^^^^ process rebalance result....
         return result
     }
 
     // Rebalances this node after removal of child if needed. Returns replacement of this node.
     //   rt = true : Removal in the right child
     //   rt = false: Removal in the left child
-    // It should not be called on a leaf node.
-    private fun Node<E>.rebalanceAfterRemoveIfNeeded(rt: Boolean): Node<E> {
-        assert { !isLeaf }
+    private fun Node<E>.rebalanceAfterRemoveIfNeeded(rt: Boolean) {
         val p = this[rt]
-        if (rank > p.rank + 2) return rebalanceAfterRemove(rt, p)
-        return this
+        if (rank > p.rank + 2) rebalanceAfterRemove(rt, p)
     }
 
-    // Rebalances this node after removal of child. Returns replacement of this node.
+    // Rebalances this node after removal of child.
     //   rt = true : Removal in the right child
     //   rt = false: Removal in the left child
     // It should not be called on a leaf node.
-    private fun Node<E>.rebalanceAfterRemove(rt: Boolean, p: Node<E>?): Node<E> {
+    private fun Node<E>.rebalanceAfterRemove(rt: Boolean, p: Node<E>?) {
         assert { !isLeaf && this[rt] === p && rank == p.rank + 3 }
         val q = this[!rt]!!
         val dq = rank - q.rank
         if (dq == 2) {
             //  Note: the picture is for rt = false
-            //       [this]
+            //        [t]<-this
             //      / 3   \ 2
             //     [p]     [q]
             rank-- // demote this node
-            //       [this]
+            //        [t]<-this
             //      / 2   \ 1
             //     [p]     [q]
-            return this
+            return
         }
         assert { dq == 1 }
         val r = q[rt]
         val s = q[!rt]
         //  Note: the picture is for rt = false
-        //       [this]
+        //        [t]<-this
         //      / 3   \ 1
         //     [p]     [q]
         //             /  \
@@ -264,48 +267,78 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
         val ds = q.rank - s.rank
         assert { dr in 1..2 && ds in 1..2 }
         if (dr == 2 && ds == 2) {
-            //       [this]
+            //        [t]<-this
             //      / 3   \ 1
             //     [p]     [q]
             //           2 /  \ 2
             //          [r]   [s]
             rank-- // demote this node
-            //       [this]
+            //        [t]<-this
             //      / 2   \ 0
             //     [p]     [q]
             //           2 /  \ 2
             //          [r]   [s]
             q.rank-- // demote q node
-            //       [this]
+            //        [t]<-this
             //      / 2   \ 1
             //     [p]     [q]
             //           1 /  \ 1
             //          [r]   [s]
-            return this
+            return
         }
         if (ds == 1) {
-            //       [this]
+            //        [t]<-this
             //      / 3   \ 1
-            //     [p]     [q]
+            //     [p]     [q]<-q
             //        1,2 /  \ 1
             //          [r]   [s]
             rotate(rt)
-            //         [q]
+            //         [q]<-this
             //    -1  /   \  1
-            //   [this]    [s]
+            //    [t]<-q  [s]
             //  3 /   \ 2,3
             //  [p]   [r]
-            q.rank++
-            rank--
-            //         [q]
+            rank++
+            q.rank--
+            //         [q]<-this
             //     1  /   \  2
-            //   [this]    [s]
+            //    [t]<-q  [s]
             //  2 /   \ 1,2
             //  [p]   [r]
-            return q
+            if (p == null && r == null) q.rank = 0 // correct leaf invariant
+            return
         }
         assert { dr == 1 && ds == 2 }
-        TODO()
+        //        [t]<-this
+        //      / 3   \ 1
+        //     [p]     [q]<-q
+        //           1 /  \ 2
+        //          [r]<-r [s]
+        //     1,2 /  \ 1,2
+        //       [a]  [b]
+        q.rotate(!rt)
+        //        [t]<-this
+        //      / 3   \ 2
+        //     [p]     [r]<-q
+        //        1,2 /  \ -1
+        //          [a]   [q]<-r
+        //           2,3 /  \ 2
+        //             [b]   [s]
+        rotate(rt)
+        //         [r]<-this
+        //   -2 /         \ -1
+        //     [t]<-q      [q]<-r
+        //  3 /  \ 3,4 2,3 /  \ 2
+        //  [p]  [a]     [b]  [s]
+        q.rank -= 2
+        r!!.rank--
+        rank++
+        //         [r]<-this
+        //    1 /         \ 1
+        //     [t]<-q      [q]<-r
+        //  1 /  \ 1,2 1,2 /  \ 1
+        //  [p]  [a]     [b]  [s]
+
     }
 
     // Rotates the node, rt shows direction of rotation
