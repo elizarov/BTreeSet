@@ -338,7 +338,6 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
         //     [t]<-q      [q]<-r
         //  1 /  \ 1,2 1,2 /  \ 1
         //  [p]  [a]     [b]  [s]
-
     }
 
     // Rotates the node, rt shows direction of rotation
@@ -358,18 +357,35 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
     //         /     \
     //        [s]    [q]
     private fun <E> Node<E>.rotate(rt: Boolean) {
-        val p = this[!rt]!!
-        val q = this[rt]
-        val r = p[!rt]
-        val s = p[rt]
-        this[!rt] = r
-        this[rt] = p
-        p[!rt] = s
-        p[rt] = q
+        if (rt) rotateRight() else rotateLeft()
+    }
+    
+    private fun <E> Node<E>.rotateRight() {
+        val p = left!!
+        val q = right
+        val r = p.left
+        val s = p.right
+        left = r
+        right = p
+        p.left = s
+        p.right = q
         key = p.key.also { p.key = key }
         rank = p.rank.also { p.rank = rank }
     }
-    
+
+    private fun <E> Node<E>.rotateLeft() {
+        val p = right!!
+        val q = left
+        val r = p.right
+        val s = p.left
+        right = r
+        left = p
+        p.right = s
+        p.left = q
+        key = p.key.also { p.key = key }
+        rank = p.rank.also { p.rank = rank }
+    }
+
     private inline fun assert(cond: () -> Boolean) {
         //check(cond())
     }

@@ -115,20 +115,20 @@ JTreeSetBenchmark.add       128  avgt    8   1741.878 ±   2.702  ns/op
 JTreeSetBenchmark.add       192  avgt    8   2815.356 ±  11.896  ns/op
 JTreeSetBenchmark.add       256  avgt    8   3857.971 ±   7.622  ns/op
 
-WTreeSetBenchmark.add         1  avgt    8      3.414 ±   0.030  ns/op
-WTreeSetBenchmark.add         2  avgt    8      9.058 ±   0.028  ns/op
-WTreeSetBenchmark.add         3  avgt    8     15.520 ±   0.034  ns/op
-WTreeSetBenchmark.add         4  avgt    8     13.459 ±   0.023  ns/op
-WTreeSetBenchmark.add         6  avgt    8     21.469 ±   0.081  ns/op
-WTreeSetBenchmark.add         8  avgt    8     82.753 ±   0.169  ns/op
-WTreeSetBenchmark.add        12  avgt    8     98.899 ±   0.512  ns/op
-WTreeSetBenchmark.add        16  avgt    8    211.305 ±   0.392  ns/op
-WTreeSetBenchmark.add        24  avgt    8    329.140 ±   5.989  ns/op
-WTreeSetBenchmark.add        32  avgt    8    431.960 ±   2.265  ns/op
-WTreeSetBenchmark.add        48  avgt    8    728.196 ±   4.460  ns/op
-WTreeSetBenchmark.add        64  avgt    8   1132.979 ±   2.578  ns/op
-WTreeSetBenchmark.add        96  avgt    8   1867.033 ±   7.961  ns/op
-WTreeSetBenchmark.add       128  avgt    8   2476.958 ±  16.454  ns/op
-WTreeSetBenchmark.add       192  avgt    8   3811.585 ± 101.165  ns/op
-WTreeSetBenchmark.add       256  avgt    8   5522.375 ±  22.064  ns/op
+WTreeSetBenchmark.add         1  avgt    8      3.430 ±   0.084  ns/op
+WTreeSetBenchmark.add         2  avgt    8      9.041 ±   0.057  ns/op
+WTreeSetBenchmark.add         3  avgt    8     15.569 ±   0.082  ns/op
+WTreeSetBenchmark.add         4  avgt    8     13.434 ±   0.036  ns/op
+WTreeSetBenchmark.add         6  avgt    8     21.464 ±   0.423  ns/op
+WTreeSetBenchmark.add         8  avgt    8     78.034 ±   0.462  ns/op
+WTreeSetBenchmark.add        12  avgt    8     91.809 ±   0.619  ns/op
+WTreeSetBenchmark.add        16  avgt    8    193.997 ±   1.770  ns/op
+WTreeSetBenchmark.add        24  avgt    8    315.485 ±   1.296  ns/op
+WTreeSetBenchmark.add        32  avgt    8    403.325 ±   1.383  ns/op
+WTreeSetBenchmark.add        48  avgt    8    707.021 ±   3.448  ns/op
+WTreeSetBenchmark.add        64  avgt    8   1072.929 ±   7.222  ns/op
+WTreeSetBenchmark.add        96  avgt    8   1945.479 ±   7.760  ns/op
+WTreeSetBenchmark.add       128  avgt    8   2354.559 ±   6.616  ns/op
+WTreeSetBenchmark.add       192  avgt    8   3739.823 ±  28.130  ns/op
+WTreeSetBenchmark.add       256  avgt    8   5014.931 ±  36.373  ns/op
 ```
