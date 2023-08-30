@@ -371,7 +371,7 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
     }
     
     private inline fun assert(cond: () -> Boolean) {
-        check(cond())
+        //check(cond())
     }
 }
 
