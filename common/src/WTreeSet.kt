@@ -43,7 +43,7 @@ class WTreeSet<E>(private val comparator: Comparator<in E>) : SortedSet<E> {
     }
 
     override fun add(element: E): Boolean {
-        root?.addImpl(element)?.let { return it }
+        root?.let { return it.addImpl(element) }
         root = Node(element)
         return true
     }
