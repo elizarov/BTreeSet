@@ -11,9 +11,7 @@ object KeyComparator : Comparator<Key> {
 }
 
 @State(Scope.Benchmark)
-abstract class SortedSetBenchmark {
-    protected abstract val factory: () -> SortedSet<Key>
-
+abstract class SortedSetBenchmark(private val factory: () -> SortedSet<Key>) {
     @Param("1", "2", "3", "4", "6", "8", "12", "16", "24", "32", "48", "64", "96", "128", "192", "256")
     @JvmField var n: Int = 0
 
@@ -27,6 +25,15 @@ abstract class SortedSetBenchmark {
     }
 
     @Benchmark
+    fun contains(): Int {
+        var count = 0
+        for (key in keys) {
+            if (sharedSet.contains(key)) count++
+        }
+        return count
+    }
+
+    @Benchmark
     fun add(): SortedSet<Key> {
         val set = factory()
         for (key in keys) {
@@ -36,11 +43,14 @@ abstract class SortedSetBenchmark {
     }
 
     @Benchmark
-    fun contains(): Int {
-        var count = 0
+    fun addRemove(): SortedSet<Key> {
+        val set = factory()
         for (key in keys) {
-            if (sharedSet.contains(key)) count++
+            set.add(key)
         }
-        return count
+        for (key in keys) {
+            set.remove(key)
+        }
+        return set
     }
 }

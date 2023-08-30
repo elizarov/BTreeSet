@@ -9,27 +9,18 @@ import java.util.concurrent.*
 @Fork(1)
 @Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 8, time = 1, timeUnit = TimeUnit.SECONDS)
-open class BTreeSetBenchmark : SortedSetBenchmark() {
-    override val factory: () -> SortedSet<Key>
-        get() = {  BTreeSet(KeyComparator) }
-}
+open class BTreeSetBenchmark : SortedSetBenchmark({ BTreeSet(KeyComparator) })
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Fork(1)
 @Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 8, time = 1, timeUnit = TimeUnit.SECONDS)
-open class WTreeSetBenchmark : SortedSetBenchmark() {
-    override val factory: () -> SortedSet<Key>
-        get() = {  WTreeSet(KeyComparator) }
-}
+open class WTreeSetBenchmark : SortedSetBenchmark({ WTreeSet(KeyComparator) })
 
 @BenchmarkMode(Mode.AverageTime)
 @OutputTimeUnit(TimeUnit.NANOSECONDS)
 @Fork(1)
 @Warmup(iterations = 3, time = 1, timeUnit = TimeUnit.SECONDS)
 @Measurement(iterations = 8, time = 1, timeUnit = TimeUnit.SECONDS)
-open class JTreeSetBenchmark : SortedSetBenchmark() {
-    override val factory: () -> SortedSet<Key>
-        get() = {  JTreeSet(KeyComparator) }
-}
+open class JTreeSetBenchmark : SortedSetBenchmark({ JTreeSet(KeyComparator) })

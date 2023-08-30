@@ -132,3 +132,60 @@ WTreeSetBenchmark.add       128  avgt    8   2354.559 ±   6.616  ns/op
 WTreeSetBenchmark.add       192  avgt    8   3739.823 ±  28.130  ns/op
 WTreeSetBenchmark.add       256  avgt    8   5014.931 ±  36.373  ns/op
 ```
+
+### Add and remove
+
+```text
+Benchmark                    (n)  Mode  Cnt      Score     Error  Units
+
+BTreeSetBenchmark.addRemove    1  avgt    8     15.487 ±   0.081  ns/op
+BTreeSetBenchmark.addRemove    2  avgt    8     48.482 ±   0.268  ns/op
+BTreeSetBenchmark.addRemove    3  avgt    8     75.376 ±   0.239  ns/op
+BTreeSetBenchmark.addRemove    4  avgt    8    115.369 ±   0.912  ns/op
+BTreeSetBenchmark.addRemove    6  avgt    8    184.931 ±   2.209  ns/op
+BTreeSetBenchmark.addRemove    8  avgt    8    388.092 ±   3.130  ns/op
+BTreeSetBenchmark.addRemove   12  avgt    8    655.588 ±  14.152  ns/op
+BTreeSetBenchmark.addRemove   16  avgt    8    904.063 ±   8.606  ns/op
+BTreeSetBenchmark.addRemove   24  avgt    8   1616.253 ±   6.326  ns/op
+BTreeSetBenchmark.addRemove   32  avgt    8   2148.906 ±   3.689  ns/op
+BTreeSetBenchmark.addRemove   48  avgt    8   3607.014 ±  17.082  ns/op
+BTreeSetBenchmark.addRemove   64  avgt    8   5512.325 ±  33.898  ns/op
+BTreeSetBenchmark.addRemove   96  avgt    8   9153.293 ±  51.625  ns/op
+BTreeSetBenchmark.addRemove  128  avgt    8  12952.800 ±  86.578  ns/op
+BTreeSetBenchmark.addRemove  192  avgt    8  19459.297 ±  54.013  ns/op
+BTreeSetBenchmark.addRemove  256  avgt    8  27361.804 ± 421.177  ns/op
+
+JTreeSetBenchmark.addRemove    1  avgt    8     10.638 ±   0.036  ns/op
+JTreeSetBenchmark.addRemove    2  avgt    8     19.833 ±   0.235  ns/op
+JTreeSetBenchmark.addRemove    3  avgt    8     40.399 ±   0.227  ns/op
+JTreeSetBenchmark.addRemove    4  avgt    8     52.939 ±   0.260  ns/op
+JTreeSetBenchmark.addRemove    6  avgt    8     73.929 ±   0.331  ns/op
+JTreeSetBenchmark.addRemove    8  avgt    8    137.067 ±   0.445  ns/op
+JTreeSetBenchmark.addRemove   12  avgt    8    198.252 ±   0.797  ns/op
+JTreeSetBenchmark.addRemove   16  avgt    8    344.187 ±   2.093  ns/op
+JTreeSetBenchmark.addRemove   24  avgt    8    485.762 ±   2.230  ns/op
+JTreeSetBenchmark.addRemove   32  avgt    8    720.056 ±   4.643  ns/op
+JTreeSetBenchmark.addRemove   48  avgt    8   1173.623 ±   7.054  ns/op
+JTreeSetBenchmark.addRemove   64  avgt    8   1710.774 ±   7.570  ns/op
+JTreeSetBenchmark.addRemove   96  avgt    8   2655.448 ±  22.123  ns/op
+JTreeSetBenchmark.addRemove  128  avgt    8   3334.910 ±  25.052  ns/op
+JTreeSetBenchmark.addRemove  192  avgt    8   5637.390 ±  34.762  ns/op
+JTreeSetBenchmark.addRemove  256  avgt    8   7768.239 ±  57.824  ns/op
+
+WTreeSetBenchmark.addRemove    1  avgt    8      5.734 ±   0.022  ns/op
+WTreeSetBenchmark.addRemove    2  avgt    8     10.818 ±   0.069  ns/op
+WTreeSetBenchmark.addRemove    3  avgt    8     25.644 ±   0.070  ns/op
+WTreeSetBenchmark.addRemove    4  avgt    8     34.403 ±   0.177  ns/op
+WTreeSetBenchmark.addRemove    6  avgt    8     53.620 ±   0.558  ns/op
+WTreeSetBenchmark.addRemove    8  avgt    8    136.592 ±   0.938  ns/op
+WTreeSetBenchmark.addRemove   12  avgt    8    207.525 ±   0.880  ns/op
+WTreeSetBenchmark.addRemove   16  avgt    8    417.351 ±   1.770  ns/op
+WTreeSetBenchmark.addRemove   24  avgt    8    700.026 ±   1.780  ns/op
+WTreeSetBenchmark.addRemove   32  avgt    8    883.212 ±   6.790  ns/op
+WTreeSetBenchmark.addRemove   48  avgt    8   1773.843 ±  12.882  ns/op
+WTreeSetBenchmark.addRemove   64  avgt    8   2629.212 ±  12.366  ns/op
+WTreeSetBenchmark.addRemove   96  avgt    8   4256.286 ±  21.638  ns/op
+WTreeSetBenchmark.addRemove  128  avgt    8   5877.708 ±  35.707  ns/op
+WTreeSetBenchmark.addRemove  192  avgt    8   9010.118 ±  83.938  ns/op
+WTreeSetBenchmark.addRemove  256  avgt    8  12563.614 ±  51.486  ns/op
+```
